@@ -18,6 +18,7 @@ An interesting feature for owners of these devices is to get feedback about how 
 # Expolratory analysis
 ```{r,message=FALSE,cache=TRUE}
 library(caret)
+library(randomForest)
 ```
 First we load caret library to be able to perform machine learning algorithms. Next we need to load data into R. The train and test data were provided in two csv files. They are imported as data frames.
 ```{r,cache=TRUE}
@@ -72,7 +73,7 @@ Now to find a model for the response data we use a random forest method. In prel
 
 ```{r,cache=TRUE}
 # train_control <- trainControl(method="cv", number=10)
-modfit = randomForest(classe ~ ., data=training ,ntree=80,proximity = TRUE)
+modfit = randomForest(classe ~ ., data=training ,ntree=50,proximity = TRUE)
 print(modfit)
 ```
 
