@@ -1,0 +1,90 @@
+---
+title: "Prediction Assignment"
+author: "Ali Bagherpour"
+date: "August 22, 2015"
+output: html_document
+---
+
+
+```{r, echo=FALSE, include=FALSE,message=FALSE}
+setwd('/Users/alibagherpour/Documents/LearnR/Practical Machine Learning/Prediction_Assignment')
+```
+
+# Executive summary
+Nowadays, wearable devices are getting better and better in providing useful information about many aspects of our life. Among these, smart watches and smart wristbands are getting more and more popular between customers because these devices can monitor, detect and report the activities that their owner is doing while wearing these devices. 
+
+An interesting feature for owners of these devices is to get feedback about how well they performed their activity. In this project, we investigate the possibility of detecting *correct* and *incorrect* barbell lifts preformed by participant that wear accelerometers on the belt, forearm, arm, and dumbell. The 6 participants were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information on data is available from [here](http://groupware.les.inf.puc-rio.br/har).
+
+# Expolratory analysis
+```{r,message=FALSE,cache=TRUE}
+library(caret)
+library(randomForest)
+```
+First we load caret library to be able to perform machine learning algorithms. Next we need to load data into R. The train and test data were provided in two csv files. They are imported as data frames.
+```{r,cache=TRUE}
+## Loading data into R
+train_data = read.csv("pml-training.csv")
+test_data = read.csv("pml-testing.csv")
+```
+The train data has `r ncol(train_data)` columns and `r nrow(train_data)` rows. The columns are the variables that are monitored during each test. Each row represents one experiment. The last column o train_data, "classe", is the response that we want to predict. 
+
+By looking at test data we can see many columns have "NA" data and can't be used for prediction of the response. We remove these columns from train_data and test_data since they won't be useful in the model. 
+
+```{r,cache=TRUE}
+## Remove columns with NA data in test_data 
+train_data = train_data[, colSums(is.na(test_data)) != nrow(test_data)]
+test_data = test_data[, colSums(is.na(test_data)) != nrow(test_data)]
+```
+
+The first 7 columns of the dataset are the identifiers of the experiments and participants and will be removed from the data.
+```{r,cache=TRUE}
+train_data = train_data[-c(1:7)]
+test_data = test_data[-c(1:7)]
+```
+
+
+To implement and test the model we split data into train (70%) and test (30%). 
+
+```{r,cache=TRUE}
+inTrain = createDataPartition(y=train_data$classe,p=0.7)[[1]]
+training = train_data[inTrain,]
+testing = train_data[-inTrain,]
+```
+
+# Variable Selection
+The training data set now has `r ncol(training)` columns and `r nrow(training)` rows. An important part of any machine learning algorithm is to find important variables that help predict the response. There are many ways to achieve this. The method here used is to identify variables that are highly corrolated and remove one of them. *findCorrelation* function looks at the correlation matrix and if two variables have a correlation higher than the cutoff value (here 0.7 was chosen) it removes the variable with the largest mean absolute correlation.
+
+```{r,cache=TRUE}
+colClass = sapply(testing[,1:ncol(testing)-1],class)
+testing[colClass=="factor"] = sapply(testing[colClass=="factor"],as.numeric)
+training[colClass=="factor"] = sapply(training[colClass=="factor"],as.numeric)
+training.scale<- scale(training[,!names(training) %in% "classe"],center=TRUE,scale=TRUE);
+corMatMy <- cor(training.scale)
+highlyCor <- findCorrelation(corMatMy, 0.70)
+#Apply correlation filter at 0.70,
+#then we remove all the variable correlated with more 0.7.
+training= training[,-highlyCor]
+testing = testing[,-highlyCor]
+```
+By performing this filtering algorithm the training data set now has `r ncol(training)` columns and `r nrow(training)` rows. 
+
+
+Now to find a model for the response data we use a random forest method. In preliminary trys of fitting these model it was found that default values of the random forest create a very time consuming procedure. The important feature was found to be the number of trees to grow, *ntree*. By try and error ntree=80 was chosen. The dafault value was ntree=500.
+
+```{r,cache=TRUE}
+# train_control <- trainControl(method="cv", number=10)
+modfit = randomForest(classe ~ ., data=training ,ntree=50,proximity = TRUE)
+print(modfit)
+```
+
+The important variables to predit the response class can be checked
+```{r,cache=TRUE}
+varImpPlot(modfit)
+```
+
+Now we can use this model to predict the classe variable in the testing dataset.
+```{r,cache=TRUE}
+pred <- predict(modfit , testing[,1:ncol(testing)-1])
+confusionMatrix(testing$classe , pred)
+```
+As it can be seen from the table above, out of bag sample is around 1.5%. 
