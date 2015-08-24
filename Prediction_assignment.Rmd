@@ -72,14 +72,14 @@ By performing this filtering algorithm the training data set now has `r ncol(tra
 Now to find a model for the response data we use a random forest method. In preliminary trys of fitting these model it was found that default values of the random forest create a very time consuming procedure. The important feature was found to be the number of trees to grow, *ntree*. By try and error ntree=80 was chosen. The dafault value was ntree=500.
 
 ```{r,cache=TRUE}
-# train_control <- trainControl(method="cv", number=10)
-modfit = randomForest(classe ~ ., data=training ,ntree=50,proximity = TRUE)
+train_control <- trainControl(method="cv", number=5)
+modfit = train(classe ~ ., data=training ,ntree=50,proximity = TRUE,trControl = train_control)
 print(modfit)
 ```
 
 The important variables to predit the response class can be checked
 ```{r,cache=TRUE}
-varImpPlot(modfit)
+varImpPlot(modfit$finalModel)
 ```
 
 Now we can use this model to predict the classe variable in the testing dataset.
